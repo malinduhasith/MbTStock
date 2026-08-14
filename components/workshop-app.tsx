@@ -13,11 +13,13 @@ import {
   InventoryFilter,
   InventoryItem,
   Tab,
+  WorkshopMode,
   checkOutTool,
   createDemoInventory,
   filterInventory,
   getLocations,
   getMostUsed,
+  getWorkshopDeskItems,
   isCheckedOut,
   isOverdue,
   requiresAttention,
@@ -38,8 +40,10 @@ import {
   UsageView,
 } from "./reports-views";
 import { ToolsView } from "./tools-view";
+import { MechanicsView } from "./mechanics-view";
 
 const NAVIGATION: readonly [Tab, IconName][] = [
+  ["Workshop Desk", "tools"],
   ["Dashboard", "dashboard"],
   ["Tools", "tools"],
   ["Checked Out", "out"],
@@ -52,13 +56,17 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
   const [items, setItems] = useState<InventoryItem[]>(() =>
     createDemoInventory(seed),
   );
-  const [tab, setTab] = useState<Tab>("Dashboard");
+  const [tab, setTab] = useState<Tab>("Workshop Desk");
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("All locations");
   const [filter, setFilter] = useState<InventoryFilter>("All tools");
   const [now, setNow] = useState(0);
   const [selected, setSelected] = useState<InventoryItem | null>(null);
   const [employeeId, setEmployeeId] = useState(EMPLOYEES[0].id);
+  const [mechanicId, setMechanicId] = useState("");
+  const [mechanicMode, setMechanicMode] =
+    useState<WorkshopMode>("check-out");
+  const [mechanicQuery, setMechanicQuery] = useState("");
   const [notice, setNotice] = useState("");
   const [storageReady, setStorageReady] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -104,6 +112,20 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
     () => filterInventory(items, query, location, filter),
     [items, query, location, filter],
   );
+  const mechanicItems = useMemo(
+    () =>
+      getWorkshopDeskItems(
+        items,
+        mechanicMode,
+        mechanicId,
+        mechanicQuery,
+      ),
+    [items, mechanicMode, mechanicId, mechanicQuery],
+  );
+  const mechanicAssignments = useMemo(
+    () => checkedOut.filter((item) => item.holderId === mechanicId),
+    [checkedOut, mechanicId],
+  );
 
   const flash = useCallback((message: string) => {
     setNotice(message);
@@ -141,6 +163,23 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
   function handleReturn(item: InventoryItem) {
     setItems((current) => returnTool(current, item.id));
     flash("Tool returned");
+  }
+
+  function beginMechanicCheckOut(item: InventoryItem) {
+    if (!mechanicId) return;
+    setEmployeeId(mechanicId);
+    setSelected(item);
+  }
+
+  function changeMechanic(nextEmployeeId: string) {
+    setMechanicId(nextEmployeeId);
+    setMechanicQuery("");
+    setMechanicMode("check-out");
+  }
+
+  function changeMechanicMode(mode: WorkshopMode) {
+    setMechanicMode(mode);
+    setMechanicQuery("");
   }
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>) {
@@ -220,6 +259,21 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
             </div>
           </header>
           {notice ? <div className="toast" role="status" aria-live="polite">{notice}</div> : null}
+          {tab === "Workshop Desk" ? (
+            <MechanicsView
+              employeeId={mechanicId}
+              mode={mechanicMode}
+              query={mechanicQuery}
+              items={mechanicItems}
+              assigned={mechanicAssignments}
+              now={now}
+              onEmployeeChange={changeMechanic}
+              onModeChange={changeMechanicMode}
+              onQueryChange={setMechanicQuery}
+              onCheckOut={beginMechanicCheckOut}
+              onReturn={handleReturn}
+            />
+          ) : null}
           {tab === "Dashboard" ? (
             <DashboardView items={items} checkedOut={checkedOut} overdue={overdue} attentionCount={attentionCount} locationCount={locations.length} ranked={ranked} now={now} navigate={navigate} />
           ) : null}
