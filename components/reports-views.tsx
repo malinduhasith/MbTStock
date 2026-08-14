@@ -101,7 +101,7 @@ export function EmployeesView({
 const information = [
   ["01", "Dashboard", "Inventory totals, employee assignments, most-used tools, condition flags and overdue movement in one view."],
   ["02", "Check-out control", "Select a tool and employee. The demo starts a live timer and raises an alert after 30 seconds."],
-  ["03", "Excel workflow", "Import the current register, make changes, then export a revised workbook with assignment and usage data."],
+  ["03", "Excel workflow", "Start with fictional demo data, optionally import an approved workbook, then export a revised file with assignment and usage data."],
   ["04", "Production direction", "Move to an online database for simultaneous users, reliable history, permissions and backups."],
 ] as const;
 
@@ -121,7 +121,7 @@ export function InfoView() {
         <CardHeading caption="RECOMMENDED WORKFLOW" title="From prototype to workshop system" />
         <div>
           {["Import register", "Operate live", "Review insight", "Move online"].map((title, index) => (
-            <span key={title}><b>{index + 1}</b><strong>{title}</strong><small>{["TA and TB workbook data", "Check out, return, inspect", "Usage and overdue tools", "Database and staff access"][index]}</small></span>
+            <span key={title}><b>{index + 1}</b><strong>{title}</strong><small>{["Fictional demo workbook data", "Check out, return, inspect", "Usage and overdue tools", "Database and staff access"][index]}</small></span>
           ))}
         </div>
       </article>
