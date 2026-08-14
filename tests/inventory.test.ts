@@ -4,6 +4,7 @@ import {
   EMPLOYEES,
   InventoryItem,
   checkOutTool,
+  createDemoInventory,
   filterInventory,
   formatElapsed,
   getWorkshopDeskItems,
@@ -126,5 +127,22 @@ describe("inventory workflow", () => {
     expect(checkOutTool([damaged], damaged.id, EMPLOYEES[0])).toEqual([
       damaged,
     ]);
+  });
+
+  it("seeds demo assignments with movement data for the dashboard audit feed", () => {
+    const source = Array.from({ length: 15 }, (_, index) => ({
+      ...tool,
+      id: `demo-${index}`,
+      description: `Fictional demo tool ${index}`,
+    }));
+    const seeded = createDemoInventory(source, 120_000);
+    expect(seeded[2]).toMatchObject({
+      status: "checked-out",
+      lastMovementType: "checked-out",
+      lastMovementById: EMPLOYEES[0].id,
+      lastMovementAt: 4_000,
+    });
+    expect(seeded[8].lastMovementById).toBe(EMPLOYEES[1].id);
+    expect(seeded[14].lastMovementById).toBe(EMPLOYEES[3].id);
   });
 });
