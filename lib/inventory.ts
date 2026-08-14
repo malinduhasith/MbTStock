@@ -1,5 +1,5 @@
 export const DEMO_OVERDUE_MS = 30_000;
-export const STORAGE_VERSION = 1;
+export const STORAGE_VERSION = 2;
 
 export type Tab =
   | "Workshop Desk"
@@ -67,8 +67,8 @@ const DEMO_ASSIGNMENTS = new Map<number, {
   elapsedMs: number;
 }>([
   [2, { employeeId: "EMP-1042", elapsedMs: 116_000 }],
-  [18, { employeeId: "EMP-1088", elapsedMs: 74_000 }],
-  [41, { employeeId: "EMP-1161", elapsedMs: 22_000 }],
+  [8, { employeeId: "EMP-1088", elapsedMs: 74_000 }],
+  [14, { employeeId: "EMP-1161", elapsedMs: 22_000 }],
 ]);
 
 export function createDemoInventory(
