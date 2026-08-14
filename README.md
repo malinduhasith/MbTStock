@@ -1,8 +1,8 @@
 # MbT Stock
 
-MbT Stock is a typed Next.js workshop inventory and tool-custody prototype built
-from the supplied TA and TB Excel registers. It contains 386 register records,
-744 tools by quantity, and 37 workshop storage locations.
+MbT Stock is a typed Next.js workshop inventory and tool-custody prototype.
+The checked-in seed contains only clearly labelled fictional tools, locations,
+part numbers, and employees for safe demonstrations.
 
 ## Capabilities
 
@@ -47,11 +47,14 @@ This runs strict TypeScript, ESLint, unit tests, and the production build.
 
 Excel is a temporary interchange and storage mechanism. Browser changes are
 saved locally for convenience and should be exported before clearing browser
-data. A production release must use authenticated server-side persistence,
+data. The repository and hosted seed must contain fictional demonstration data
+only; customer registers must not be committed or bundled into a deployment.
+Legacy browser storage is invalidated when the seed policy changes. A production
+release must use authenticated server-side persistence,
 role-based access, immutable custody events, backups, and an approved retention
 policy.
 
 ## Deployment
 
-Production is intentionally offline. Engineering builds must be validated with
-a Vercel preview deployment and must not be promoted without explicit approval.
+The public prototype is deployed on Vercel after the full quality gate passes.
+Preview builds are validated before promotion to the production alias.
