@@ -94,6 +94,10 @@ export function createDemoInventory(
       holderId: employee.id,
       checkedOutAt: now - assignment.elapsedMs,
       usageCount,
+      lastMovementType: "checked-out",
+      lastMovementBy: employee.name,
+      lastMovementById: employee.id,
+      lastMovementAt: now - assignment.elapsedMs,
     };
   });
 }
