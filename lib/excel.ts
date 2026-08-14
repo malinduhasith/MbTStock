@@ -74,6 +74,12 @@ export async function downloadInventoryWorkbook(
       ? new Date(item.checkedOutAt).toISOString()
       : "",
     "USAGE COUNT": item.usageCount,
+    "LAST MOVEMENT": item.lastMovementType ?? "",
+    "MOVEMENT PERFORMED BY": item.lastMovementBy ?? "",
+    "MOVEMENT EMPLOYEE ID": item.lastMovementById ?? "",
+    "LAST MOVEMENT AT": item.lastMovementAt
+      ? new Date(item.lastMovementAt).toISOString()
+      : "",
   }));
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(

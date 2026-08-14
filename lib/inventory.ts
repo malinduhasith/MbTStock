@@ -16,7 +16,8 @@ export type InventoryFilter =
   | "Available"
   | "Checked out"
   | "Needs attention";
-export type WorkshopMode = "check-out" | "check-in";
+export type WorkshopMode = "check-out" | "check-in" | "hand-off";
+export type MovementType = "checked-out" | "returned" | "handed-off";
 
 export interface Employee {
   id: string;
@@ -39,6 +40,10 @@ export interface InventoryItem {
   holderId?: string;
   checkedOutAt?: number;
   usageCount: number;
+  lastMovementType?: MovementType;
+  lastMovementBy?: string;
+  lastMovementById?: string;
+  lastMovementAt?: number;
 }
 
 export interface InventorySnapshot {
@@ -132,6 +137,10 @@ export function checkOutTool(
           holderId: employee.id,
           checkedOutAt,
           usageCount: item.usageCount + 1,
+          lastMovementType: "checked-out",
+          lastMovementBy: employee.name,
+          lastMovementById: employee.id,
+          lastMovementAt: checkedOutAt,
         }
       : item,
   );
@@ -148,20 +157,20 @@ export function getWorkshopDeskItems(
   return items.filter((item) => {
     const matchesQuery =
       !normalizedQuery ||
-      [item.partNumber, item.description, item.location]
+      [item.partNumber, item.description, item.location, item.holder ?? ""]
         .join(" ")
         .toLocaleLowerCase()
         .includes(normalizedQuery);
     if (!matchesQuery) return false;
-    return mode === "check-in"
-      ? isCheckedOut(item) && item.holderId === employeeId
-      : canCheckOut(item);
+    return mode === "check-out" ? canCheckOut(item) : isCheckedOut(item);
   });
 }
 
 export function returnTool(
   items: readonly InventoryItem[],
   toolId: string,
+  returnedBy?: Employee,
+  returnedAt = Date.now(),
 ): InventoryItem[] {
   return items.map((item) =>
     item.id === toolId
@@ -171,6 +180,34 @@ export function returnTool(
           holder: undefined,
           holderId: undefined,
           checkedOutAt: undefined,
+          lastMovementType: "returned",
+          lastMovementBy: returnedBy?.name,
+          lastMovementById: returnedBy?.id,
+          lastMovementAt: returnedAt,
+        }
+      : item,
+  );
+}
+
+export function handOffTool(
+  items: readonly InventoryItem[],
+  toolId: string,
+  recipient: Employee,
+  performedBy: Employee,
+  handedOffAt = Date.now(),
+): InventoryItem[] {
+  return items.map((item) =>
+    item.id === toolId &&
+    isCheckedOut(item) &&
+    item.holderId !== recipient.id
+      ? {
+          ...item,
+          holder: recipient.name,
+          holderId: recipient.id,
+          lastMovementType: "handed-off",
+          lastMovementBy: performedBy.name,
+          lastMovementById: performedBy.id,
+          lastMovementAt: handedOffAt,
         }
       : item,
   );

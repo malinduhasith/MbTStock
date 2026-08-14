@@ -7,6 +7,7 @@ import {
   filterInventory,
   formatElapsed,
   getWorkshopDeskItems,
+  handOffTool,
   isOverdue,
   returnTool,
 } from "../lib/inventory";
@@ -43,10 +44,17 @@ describe("inventory workflow", () => {
 
   it("returns a serviceable tool and removes assignment data", () => {
     const [checkedOut] = checkOutTool([tool], tool.id, EMPLOYEES[0], 1_000);
-    const [returned] = returnTool([checkedOut], tool.id);
+    const [returned] = returnTool(
+      [checkedOut],
+      tool.id,
+      EMPLOYEES[1],
+      2_000,
+    );
     expect(returned.status).toBe("available");
     expect(returned.holder).toBeUndefined();
     expect(returned.checkedOutAt).toBeUndefined();
+    expect(returned.lastMovementById).toBe(EMPLOYEES[1].id);
+    expect(returned.lastMovementType).toBe("returned");
   });
 
   it("searches part number, description, location, and holder", () => {
@@ -61,7 +69,7 @@ describe("inventory workflow", () => {
     expect(formatElapsed(3_660_000)).toBe("1h 1m");
   });
 
-  it("shows only a mechanic's own tools in check-in mode", () => {
+  it("allows any employee to see and return checked-out tools", () => {
     const [checkedOut] = checkOutTool([tool], tool.id, EMPLOYEES[0], 1_000);
     expect(
       getWorkshopDeskItems(
@@ -78,7 +86,31 @@ describe("inventory workflow", () => {
         EMPLOYEES[1].id,
         "",
       ),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
+  });
+
+  it("hands custody directly to another employee without resetting out time", () => {
+    const [checkedOut] = checkOutTool(
+      [tool],
+      tool.id,
+      EMPLOYEES[0],
+      1_000,
+    );
+    const [transferred] = handOffTool(
+      [checkedOut],
+      tool.id,
+      EMPLOYEES[2],
+      EMPLOYEES[1],
+      2_000,
+    );
+    expect(transferred).toMatchObject({
+      status: "checked-out",
+      holderId: EMPLOYEES[2].id,
+      checkedOutAt: 1_000,
+      lastMovementType: "handed-off",
+      lastMovementById: EMPLOYEES[1].id,
+      lastMovementAt: 2_000,
+    });
   });
 
   it("does not offer damaged tools for mechanic check-out", () => {
