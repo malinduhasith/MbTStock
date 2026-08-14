@@ -1,20 +1,55 @@
 # MbT Stock
 
-Workshop tool inventory prototype built from the supplied TA and TB Excel registers.
+MbT Stock is a typed Next.js workshop inventory and tool-custody prototype built
+from the supplied TA and TB Excel registers. It contains 386 register records,
+744 tools by quantity, and 37 workshop storage locations.
 
-## Features
+## Capabilities
 
-- Search and filter 386 registered tools across TA/TB storage locations
-- Mock employee list with employee IDs
-- Tool check-out and return workflow
-- Damage and missing-parts indicators
-- Excel register import and export
+- Search and filter by part number, description, location, condition, or holder
+- Check tools out to identified employees and return them to the workshop
+- Live 30-second overdue threshold for stakeholder demonstrations
+- Usage, custody, inventory-health, and employee assignment views
+- Validated Excel import and auditable Excel export
+- Versioned browser persistence for prototype sessions
+- Keyboard-accessible navigation and check-out dialog
 
-## Local development
+## Engineering approach
+
+The application separates presentation, domain rules, persistence, and Excel
+integration. Checkout and overdue rules are pure functions covered by automated
+tests. Spreadsheet parsing accepts the known register schema and rejects files
+that contain no valid inventory rows.
+
+See [Architecture](docs/architecture.md) for boundaries and the production
+migration path.
+
+## Development
+
+Requirements: Node.js 22 and npm.
 
 ```bash
 npm install
 npm run dev
 ```
 
-This is a prototype. Browser changes remain local until the register is exported.
+Run the full quality gate:
+
+```bash
+npm run check
+```
+
+This runs strict TypeScript, ESLint, unit tests, and the production build.
+
+## Prototype data policy
+
+Excel is a temporary interchange and storage mechanism. Browser changes are
+saved locally for convenience and should be exported before clearing browser
+data. A production release must use authenticated server-side persistence,
+role-based access, immutable custody events, backups, and an approved retention
+policy.
+
+## Deployment
+
+Production is intentionally offline. Engineering builds must be validated with
+a Vercel preview deployment and must not be promoted without explicit approval.
