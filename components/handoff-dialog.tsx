@@ -1,23 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EMPLOYEES, Employee, InventoryItem } from "../lib/inventory";
+import { Employee, InventoryItem } from "../lib/inventory";
 import { Icon } from "./icon";
 
 export function HandoffDialog({
   item,
+  employees,
   performedBy,
   onCancel,
   onConfirm,
 }: {
   item: InventoryItem;
+  employees: readonly Employee[];
   performedBy: Employee;
   onCancel: () => void;
   onConfirm: (recipient: Employee) => void;
 }) {
   const recipients = useMemo(
-    () => EMPLOYEES.filter((employee) => employee.id !== item.holderId),
-    [item.holderId],
+    () => employees.filter((employee) => employee.id !== item.holderId),
+    [employees, item.holderId],
   );
   const [recipientId, setRecipientId] = useState(recipients[0]?.id ?? "");
   const cancelButton = useRef<HTMLButtonElement>(null);

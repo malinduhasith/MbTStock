@@ -10,10 +10,13 @@ export function ToolsView({
   location,
   filter,
   now,
+  connected,
+  syncing,
   onQueryChange,
   onLocationChange,
   onFilterChange,
   onImport,
+  onRefresh,
   onCheckOut,
   onReturn,
 }: {
@@ -24,18 +27,21 @@ export function ToolsView({
   location: string;
   filter: InventoryFilter;
   now: number;
+  connected: boolean;
+  syncing: boolean;
   onQueryChange: (value: string) => void;
   onLocationChange: (value: string) => void;
   onFilterChange: (value: InventoryFilter) => void;
   onImport: () => void;
+  onRefresh: () => void;
   onCheckOut: (item: InventoryItem) => void;
   onReturn: (item: InventoryItem) => void;
 }) {
   return (
     <section className="toolspage">
       <div className="toolhero">
-        <div><small>REAL INVENTORY</small><h2>Find the right workshop tool.</h2><p>Search by part number, tool name, storage area, or current holder.</p></div>
-        <button type="button" className="dark" onClick={onImport}><Icon name="up" />Replace from Excel</button>
+        <div><small>WORKSHOP INVENTORY</small><h2>Find the right workshop tool.</h2><p>Search by part number, tool name, storage area, or current holder.</p></div>
+        <button type="button" className="dark" disabled={syncing} onClick={connected ? onRefresh : onImport}><Icon name="up" />{connected ? (syncing ? "Refreshing…" : "Refresh Sheets") : "Replace from Excel"}</button>
       </div>
       <div className="filters">
         <label>

@@ -12,7 +12,11 @@ but each boundary can be replaced independently.
 - `components/`: accessible UI composition and view-specific components
 - `lib/inventory.ts`: domain types, checkout/return rules, filtering, metrics
 - `lib/excel.ts`: register-schema adapter and workbook import/export
-- `lib/storage.ts`: versioned prototype persistence
+- `lib/sheets-schema.ts`: typed Google Sheets row mapping
+- `lib/google-sheets.ts`: server-only authentication, schema setup and writes
+- `lib/workshop-repository.ts`: Google Sheets/demo persistence selection
+- `lib/storage.ts`: versioned browser fallback for unconfigured demos
+- `app/api/workshop/`: no-store server API for reads and custody movements
 - `tests/`: unit tests for safety-critical workflow and import behaviour
 
 UI components do not directly mutate inventory records. They request domain
@@ -27,16 +31,23 @@ state. This keeps behaviour predictable and testable.
 - Damage and missing-parts values map to an explicit attention status.
 - Persisted browser data is accepted only when its schema and version validate.
 - Excel exports use ISO timestamps rather than locale-dependent date strings.
+- Google Sheets headers are validated before data is accepted.
+- Tool rows carry a monotonically increasing `row_version` checked on writes.
+- Each state change and its append-only movement event are applied in one atomic
+  Sheets API batch request.
+- Google service-account credentials never cross the server/browser boundary.
 
 ## Prototype limitations
 
-Local storage is single-browser state, not a shared database. It provides no
-authentication, concurrency control, durable audit log, or central backup.
-Seeded employee records and usage counts are demonstration data.
+Google Sheets is suitable for prototype and low-volume workshop acceptance
+testing, but it is not a transactional production database. Row-version checks
+reject stale clients and same-instance writes are serialized; independent
+serverless instances can still race between their validation read and atomic
+write. Seeded employee records and usage counts are demonstration data.
 
 ## Production migration
 
-1. Replace `lib/storage.ts` with an authenticated repository/API boundary.
+1. Replace the Google Sheets repository without changing the API or domain layer.
 2. Store tools, employees, custody events, inspections, and locations separately.
 3. Use append-only custody events for checkout and return auditability.
 4. Add role-based permissions and workshop identity-provider integration.

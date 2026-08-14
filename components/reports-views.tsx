@@ -1,5 +1,5 @@
 import {
-  EMPLOYEES,
+  Employee,
   InventoryItem,
   Tab,
   formatElapsed,
@@ -10,11 +10,13 @@ import { CardHeading, EmptyState } from "./shared";
 
 export function CheckedOutView({
   items,
+  employees,
   overdueCount,
   now,
   onReturn,
 }: {
   items: readonly InventoryItem[];
+  employees: readonly Employee[];
   overdueCount: number;
   now: number;
   onReturn: (item: InventoryItem) => void;
@@ -31,7 +33,7 @@ export function CheckedOutView({
         <div className="outgrid">
           {items.map((item) => {
             const overdue = isOverdue(item, now);
-            const employee = EMPLOYEES.find((candidate) => candidate.id === item.holderId);
+            const employee = employees.find((candidate) => candidate.id === item.holderId);
             return (
               <article key={item.id} className={overdue ? "overdue" : ""}>
                 <div><i><Icon name="tools" /></i><em>{overdue ? "Follow up" : "In use"}</em></div>
@@ -74,16 +76,18 @@ export function UsageView({ items }: { items: readonly InventoryItem[] }) {
 
 export function EmployeesView({
   checkedOut,
+  employees,
   now,
   navigate,
 }: {
   checkedOut: readonly InventoryItem[];
+  employees: readonly Employee[];
   now: number;
   navigate: (tab: Tab) => void;
 }) {
   return (
     <section className="employees">
-      {EMPLOYEES.map((employee) => {
+      {employees.map((employee) => {
         const assigned = checkedOut.filter((item) => item.holderId === employee.id);
         const overdue = assigned.filter((item) => isOverdue(item, now));
         return (
@@ -101,8 +105,8 @@ export function EmployeesView({
 const information = [
   ["01", "Dashboard", "Inventory totals, employee assignments, most-used tools, condition flags and overdue movement in one view."],
   ["02", "Check-out control", "Select a tool and employee. The demo starts a live timer and raises an alert after 30 seconds."],
-  ["03", "Excel workflow", "Start with fictional demo data, optionally import an approved workbook, then export a revised file with assignment and usage data."],
-  ["04", "Production direction", "Move to an online database for simultaneous users, reliable history, permissions and backups."],
+  ["03", "Google Sheets workflow", "Tools and employees are read from separate tabs. Every checkout, return and hand-off appends an immutable movement row."],
+  ["04", "Production direction", "The server-only integration keeps Google credentials out of the browser and preserves a clean migration path to an online database."],
 ] as const;
 
 export function InfoView() {
@@ -110,7 +114,7 @@ export function InfoView() {
     <section className="infopage">
       <div className="infohero">
         <Icon name="info" />
-        <div><small>PROTOTYPE GUIDE</small><h2>Built for a Mercedes-Benz workshop tool register.</h2><p>This mock-up shows how the workshop can move beyond a static spreadsheet while keeping Excel as the temporary data source.</p></div>
+        <div><small>PROTOTYPE GUIDE</small><h2>Built for a Mercedes-Benz workshop tool register.</h2><p>This mock-up uses Google Sheets as temporary shared storage while keeping all workshop movements auditable.</p></div>
       </div>
       <div className="infogrid">
         {information.map(([number, title, description]) => (
@@ -120,8 +124,8 @@ export function InfoView() {
       <article className="card workflow">
         <CardHeading caption="RECOMMENDED WORKFLOW" title="From prototype to workshop system" />
         <div>
-          {["Import register", "Operate live", "Review insight", "Move online"].map((title, index) => (
-            <span key={title}><b>{index + 1}</b><strong>{title}</strong><small>{["Fictional demo workbook data", "Check out, return, inspect", "Usage and overdue tools", "Database and staff access"][index]}</small></span>
+          {["Maintain sheets", "Operate live", "Review insight", "Move online"].map((title, index) => (
+            <span key={title}><b>{index + 1}</b><strong>{title}</strong><small>{["Tools and employee directories", "Check out, return, hand off", "Usage and overdue tools", "Database and staff access"][index]}</small></span>
           ))}
         </div>
       </article>

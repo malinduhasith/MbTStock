@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { EMPLOYEES, InventoryItem } from "../lib/inventory";
+import { Employee, InventoryItem } from "../lib/inventory";
 import { Icon } from "./icon";
 
 export function CheckoutDialog({
   item,
+  employees,
   employeeId,
   onEmployeeChange,
   onCancel,
   onConfirm,
 }: {
   item: InventoryItem;
+  employees: readonly Employee[];
   employeeId: string;
   onEmployeeChange: (employeeId: string) => void;
   onCancel: () => void;
@@ -47,7 +49,7 @@ export function CheckoutDialog({
         <label>
           Assign to employee
           <select value={employeeId} onChange={(event) => onEmployeeChange(event.target.value)}>
-            {EMPLOYEES.map((employee) => (
+            {employees.map((employee) => (
               <option key={employee.id} value={employee.id}>{employee.name} · {employee.id}</option>
             ))}
           </select>

@@ -10,11 +10,14 @@ import {
 } from "react";
 import {
   EMPLOYEES,
+  CustodyAction,
+  DataSource,
   Employee,
   InventoryFilter,
   InventoryItem,
   Tab,
   WorkshopMode,
+  WorkshopDataset,
   checkOutTool,
   createDemoInventory,
   filterInventory,
@@ -67,6 +70,8 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
   const [selected, setSelected] = useState<InventoryItem | null>(null);
   const [handoffItem, setHandoffItem] =
     useState<InventoryItem | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([...EMPLOYEES]);
+  const [dataSource, setDataSource] = useState<DataSource>("demo");
   const [employeeId, setEmployeeId] = useState(EMPLOYEES[0].id);
   const [mechanicId, setMechanicId] = useState("");
   const [mechanicMode, setMechanicMode] =
@@ -74,21 +79,87 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
   const [mechanicQuery, setMechanicQuery] = useState("");
   const [notice, setNotice] = useState("");
   const [storageReady, setStorageReady] = useState(false);
+  const [syncing, setSyncing] = useState(true);
   const fileInput = useRef<HTMLInputElement>(null);
   const noticeTimer = useRef<number | null>(null);
 
-  useEffect(() => {
-    const hydrationTask = window.setTimeout(() => {
-      const saved = loadInventory();
-      if (saved) setItems(saved);
-      setStorageReady(true);
-    }, 0);
-    return () => window.clearTimeout(hydrationTask);
+  const flash = useCallback((message: string) => {
+    setNotice(message);
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(""), 2_500);
   }, []);
 
+  const applyDataset = useCallback((dataset: WorkshopDataset) => {
+    const activeEmployees = dataset.employees.filter(
+      (employee) => employee.active,
+    );
+    setItems(dataset.items);
+    setEmployees(activeEmployees);
+    setDataSource(dataset.source);
+    setEmployeeId((current) =>
+      activeEmployees.some((employee) => employee.id === current)
+        ? current
+        : activeEmployees[0]?.id ?? "",
+    );
+    setMechanicId((current) =>
+      activeEmployees.some((employee) => employee.id === current)
+        ? current
+        : "",
+    );
+  }, []);
+
+  const refreshRepository = useCallback(
+    async (initial = false) => {
+      setSyncing(true);
+      try {
+        const response = await fetch("/api/workshop", { cache: "no-store" });
+        const payload = (await response.json()) as WorkshopDataset & {
+          error?: string;
+        };
+        if (!response.ok) {
+          throw new Error(payload.error || "Google Sheets could not be loaded.");
+        }
+        if (payload.source === "demo") {
+          const saved = loadInventory();
+          applyDataset({ ...payload, items: saved ?? payload.items });
+        } else {
+          applyDataset(payload);
+        }
+        if (!initial) {
+          flash(
+            payload.source === "google-sheets"
+              ? "Google Sheets refreshed"
+              : "Demo data refreshed",
+          );
+        }
+      } catch (error) {
+        if (initial) {
+          const saved = loadInventory();
+          if (saved) setItems(saved);
+          setDataSource("demo");
+          flash("Google Sheets unavailable — using browser demo data");
+        } else {
+          flash(
+            error instanceof Error
+              ? error.message
+              : "Google Sheets could not be refreshed.",
+          );
+        }
+      } finally {
+        setStorageReady(true);
+        setSyncing(false);
+      }
+    },
+    [applyDataset, flash],
+  );
+
   useEffect(() => {
-    if (storageReady) saveInventory(items);
-  }, [items, storageReady]);
+    void refreshRepository(true);
+  }, [refreshRepository]);
+
+  useEffect(() => {
+    if (storageReady && dataSource === "demo") saveInventory(items);
+  }, [dataSource, items, storageReady]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
@@ -132,12 +203,6 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
     [checkedOut, mechanicId],
   );
 
-  const flash = useCallback((message: string) => {
-    setNotice(message);
-    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
-    noticeTimer.current = window.setTimeout(() => setNotice(""), 2_500);
-  }, []);
-
   const navigate = useCallback((next: Tab) => {
     setTab(next);
     if (next !== "Tools") {
@@ -150,53 +215,113 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
   const closeDialog = useCallback(() => setSelected(null), []);
   const closeHandoffDialog = useCallback(() => setHandoffItem(null), []);
 
-  function confirmCheckOut() {
+  async function recordAction(
+    action: CustodyAction,
+    localUpdate: (current: readonly InventoryItem[]) => InventoryItem[],
+    successMessage: string,
+  ): Promise<boolean> {
+    if (syncing) return false;
+    if (dataSource === "demo") {
+      setItems((current) => localUpdate(current));
+      flash(successMessage);
+      return true;
+    }
+
+    setSyncing(true);
+    try {
+      const response = await fetch("/api/workshop", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(action),
+      });
+      const payload = (await response.json()) as WorkshopDataset & {
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error || "The tool movement could not be saved.");
+      }
+      applyDataset(payload);
+      flash(successMessage);
+      return true;
+    } catch (error) {
+      flash(
+        error instanceof Error
+          ? error.message
+          : "The tool movement could not be saved.",
+      );
+      return false;
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function confirmCheckOut() {
     if (!selected) return;
-    const employee = EMPLOYEES.find(
+    const employee = employees.find(
       (candidate) => candidate.id === employeeId,
     );
     if (!employee) {
       flash("Select a valid employee");
       return;
     }
-    setItems((current) =>
-      checkOutTool(current, selected.id, employee, Date.now()),
+    const saved = await recordAction(
+      {
+        type: "check-out",
+        toolId: selected.id,
+        employeeId: employee.id,
+        expectedVersion: selected.rowVersion ?? 1,
+      },
+      (current) => checkOutTool(current, selected.id, employee, Date.now()),
+      `Checked out to ${employee.name}`,
     );
-    closeDialog();
-    flash(`Checked out to ${employee.name}`);
+    if (saved) closeDialog();
   }
 
-  function handleReturn(item: InventoryItem, performedById?: string) {
-    const performedBy = EMPLOYEES.find(
+  async function handleReturn(item: InventoryItem, performedById?: string) {
+    const performedBy = employees.find(
       (employee) => employee.id === performedById,
     );
-    setItems((current) =>
-      returnTool(current, item.id, performedBy, Date.now()),
-    );
-    flash(
-      performedBy
-        ? `Tool returned by ${performedBy.name}`
-        : "Tool returned",
+    if (!performedBy) {
+      navigate("Workshop Desk");
+      flash("Select your employee profile before returning a tool");
+      return;
+    }
+    await recordAction(
+      {
+        type: "return",
+        toolId: item.id,
+        performedByEmployeeId: performedBy.id,
+        expectedVersion: item.rowVersion ?? 1,
+      },
+      (current) => returnTool(current, item.id, performedBy, Date.now()),
+      `Tool returned by ${performedBy.name}`,
     );
   }
 
-  function confirmHandOff(recipient: Employee) {
+  async function confirmHandOff(recipient: Employee) {
     if (!handoffItem) return;
-    const performedBy = EMPLOYEES.find(
+    const performedBy = employees.find(
       (employee) => employee.id === mechanicId,
     );
     if (!performedBy) return;
-    setItems((current) =>
-      handOffTool(
+    const saved = await recordAction(
+      {
+        type: "hand-off",
+        toolId: handoffItem.id,
+        performedByEmployeeId: performedBy.id,
+        recipientEmployeeId: recipient.id,
+        expectedVersion: handoffItem.rowVersion ?? 1,
+      },
+      (current) => handOffTool(
         current,
         handoffItem.id,
         recipient,
         performedBy,
         Date.now(),
       ),
+      `Handed off to ${recipient.name}`,
     );
-    closeHandoffDialog();
-    flash(`Handed off to ${recipient.name}`);
+    if (saved) closeHandoffDialog();
   }
 
   function beginMechanicCheckOut(item: InventoryItem) {
@@ -244,6 +369,8 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
     }
   }
 
+  const sheetsConnected = dataSource === "google-sheets";
+
   return (
     <div className="frame">
       <div className="shell">
@@ -275,20 +402,20 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
           </nav>
           <div className="excel">
             <i aria-hidden="true" />
-            <span><strong>Excel prototype</strong><small>Import, operate, then export the revised register.</small></span>
+            <span><strong>{sheetsConnected ? "Google Sheets connected" : "Browser demo mode"}</strong><small>{sheetsConnected ? "Tools, employees and movement history are shared." : "Fictional data is saved only in this browser."}</small></span>
           </div>
           <div className="prototype">
             <Icon name="clock" />
             <span><strong>Prototype mode</strong><small>30-second overdue threshold</small></span>
           </div>
         </aside>
-        <main>
+        <main aria-busy={syncing}>
           <header>
             <div><p>WORKSHOP OPERATIONS</p><h1>{tab}</h1></div>
             <div>
               <button type="button" className="iconbtn" onClick={() => navigate("Tools")} aria-label="Search tools"><Icon name="search" /></button>
               <input ref={fileInput} hidden type="file" accept=".xlsx,.xls" onChange={handleImport} />
-              <button type="button" className="soft" onClick={() => fileInput.current?.click()}><Icon name="up" /><span>Import Excel</span></button>
+              <button type="button" className="soft" disabled={syncing} onClick={() => sheetsConnected ? void refreshRepository() : fileInput.current?.click()}><Icon name="up" /><span>{sheetsConnected ? (syncing ? "Syncing…" : "Refresh Sheets") : "Import Excel"}</span></button>
               <button type="button" className="dark" onClick={handleExport}><Icon name="down" /><span>Export</span></button>
             </div>
           </header>
@@ -296,6 +423,7 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
           {tab === "Workshop Desk" ? (
             <MechanicsView
               employeeId={mechanicId}
+              employees={employees}
               mode={mechanicMode}
               query={mechanicQuery}
               items={mechanicItems}
@@ -310,27 +438,28 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
             />
           ) : null}
           {tab === "Dashboard" ? (
-            <DashboardView items={items} checkedOut={checkedOut} overdue={overdue} attentionCount={attentionCount} locationCount={locations.length} ranked={ranked} now={now} navigate={navigate} />
+            <DashboardView items={items} employees={employees} checkedOut={checkedOut} overdue={overdue} attentionCount={attentionCount} locationCount={locations.length} ranked={ranked} now={now} navigate={navigate} />
           ) : null}
           {tab === "Tools" ? (
-            <ToolsView items={filtered.slice(0, 120)} totalMatches={filtered.length} locations={locations} query={query} location={location} filter={filter} now={now} onQueryChange={setQuery} onLocationChange={setLocation} onFilterChange={setFilter} onImport={() => fileInput.current?.click()} onCheckOut={setSelected} onReturn={handleReturn} />
+            <ToolsView items={filtered.slice(0, 120)} totalMatches={filtered.length} locations={locations} query={query} location={location} filter={filter} now={now} connected={sheetsConnected} syncing={syncing} onQueryChange={setQuery} onLocationChange={setLocation} onFilterChange={setFilter} onImport={() => fileInput.current?.click()} onRefresh={() => void refreshRepository()} onCheckOut={setSelected} onReturn={handleReturn} />
           ) : null}
           {tab === "Checked Out" ? (
-            <CheckedOutView items={checkedOut} overdueCount={overdue.length} now={now} onReturn={handleReturn} />
+            <CheckedOutView items={checkedOut} employees={employees} overdueCount={overdue.length} now={now} onReturn={handleReturn} />
           ) : null}
           {tab === "Usage" ? <UsageView items={ranked} /> : null}
-          {tab === "Employees" ? <EmployeesView checkedOut={checkedOut} now={now} navigate={navigate} /> : null}
+          {tab === "Employees" ? <EmployeesView checkedOut={checkedOut} employees={employees} now={now} navigate={navigate} /> : null}
           {tab === "Info" ? <InfoView /> : null}
         </main>
         {selected ? (
-          <CheckoutDialog item={selected} employeeId={employeeId} onEmployeeChange={setEmployeeId} onCancel={closeDialog} onConfirm={confirmCheckOut} />
+          <CheckoutDialog item={selected} employees={employees} employeeId={employeeId} onEmployeeChange={setEmployeeId} onCancel={closeDialog} onConfirm={confirmCheckOut} />
         ) : null}
-        {handoffItem && mechanicId ? (
+        {handoffItem && mechanicId && employees.length ? (
           <HandoffDialog
             item={handoffItem}
+            employees={employees}
             performedBy={
-              EMPLOYEES.find((employee) => employee.id === mechanicId) ??
-              EMPLOYEES[0]
+              employees.find((employee) => employee.id === mechanicId) ??
+              employees[0]
             }
             onCancel={closeHandoffDialog}
             onConfirm={confirmHandOff}
