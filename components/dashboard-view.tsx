@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import {
-  EMPLOYEES,
+  Employee,
   InventoryItem,
   MovementType,
   Tab,
@@ -24,6 +24,7 @@ function percentage(value: number, total: number): number {
 
 export function DashboardView({
   items,
+  employees,
   checkedOut,
   overdue,
   attentionCount,
@@ -33,6 +34,7 @@ export function DashboardView({
   navigate,
 }: {
   items: readonly InventoryItem[];
+  employees: readonly Employee[];
   checkedOut: readonly InventoryItem[];
   overdue: readonly InventoryItem[];
   attentionCount: number;
@@ -81,7 +83,7 @@ export function DashboardView({
     .sort((left, right) => right.records - left.records || left.name.localeCompare(right.name));
   const locationMax = locationSummary[0]?.records || 1;
 
-  const employeeSummary = EMPLOYEES.map((employee) => {
+  const employeeSummary = employees.map((employee) => {
     const assigned = checkedOut.filter(
       (item) => item.holderId === employee.id,
     );
@@ -142,7 +144,7 @@ export function DashboardView({
         </div>
         <div className="brief-control" aria-label="Live control rules">
           <span><Icon name="clock" /><small>Demo alert threshold</small><strong>30 seconds</strong></span>
-          <span><Icon name="users" /><small>Employees holding tools</small><strong>{activeEmployees} of {EMPLOYEES.length}</strong></span>
+          <span><Icon name="users" /><small>Employees holding tools</small><strong>{activeEmployees} of {employees.length}</strong></span>
           <span><Icon name="tools" /><small>Register health</small><strong>{health}% serviceable</strong></span>
         </div>
       </section>

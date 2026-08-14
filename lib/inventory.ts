@@ -18,12 +18,14 @@ export type InventoryFilter =
   | "Needs attention";
 export type WorkshopMode = "check-out" | "check-in" | "hand-off";
 export type MovementType = "checked-out" | "returned" | "handed-off";
+export type DataSource = "demo" | "google-sheets";
 
 export interface Employee {
   id: string;
   name: string;
   role: string;
   initials: string;
+  active: boolean;
 }
 
 export interface InventoryItem {
@@ -44,6 +46,49 @@ export interface InventoryItem {
   lastMovementBy?: string;
   lastMovementById?: string;
   lastMovementAt?: number;
+  rowVersion?: number;
+}
+
+export interface MovementEvent {
+  id: string;
+  toolId: string;
+  type: MovementType;
+  fromEmployeeId?: string;
+  toEmployeeId?: string;
+  performedByEmployeeId: string;
+  occurredAt: number;
+  originalCheckedOutAt?: number;
+  notes: string;
+}
+
+export type CustodyAction =
+  | {
+      type: "check-out";
+      toolId: string;
+      employeeId: string;
+      expectedVersion?: number;
+    }
+  | {
+      type: "return";
+      toolId: string;
+      performedByEmployeeId: string;
+      expectedVersion?: number;
+    }
+  | {
+      type: "hand-off";
+      toolId: string;
+      performedByEmployeeId: string;
+      recipientEmployeeId: string;
+      expectedVersion?: number;
+    };
+
+export interface WorkshopDataset {
+  source: DataSource;
+  writable: boolean;
+  items: InventoryItem[];
+  employees: Employee[];
+  movements: MovementEvent[];
+  loadedAt: string;
 }
 
 export interface InventorySnapshot {
@@ -53,11 +98,11 @@ export interface InventorySnapshot {
 }
 
 export const EMPLOYEES: readonly Employee[] = [
-  { id: "EMP-1042", name: "Alex Morgan", role: "Diagnostic Technician", initials: "AM" },
-  { id: "EMP-1088", name: "Jamie Lee", role: "Workshop Technician", initials: "JL" },
-  { id: "EMP-1124", name: "Sam Patel", role: "Team Leader", initials: "SP" },
-  { id: "EMP-1161", name: "Jordan Kim", role: "Apprentice", initials: "JK" },
-  { id: "EMP-1203", name: "Taylor Reed", role: "Parts Coordinator", initials: "TR" },
+  { id: "EMP-1042", name: "Alex Morgan", role: "Diagnostic Technician", initials: "AM", active: true },
+  { id: "EMP-1088", name: "Jamie Lee", role: "Workshop Technician", initials: "JL", active: true },
+  { id: "EMP-1124", name: "Sam Patel", role: "Team Leader", initials: "SP", active: true },
+  { id: "EMP-1161", name: "Jordan Kim", role: "Apprentice", initials: "JK", active: true },
+  { id: "EMP-1203", name: "Taylor Reed", role: "Parts Coordinator", initials: "TR", active: true },
 ] as const;
 
 type SeedItem = Omit<InventoryItem, "usageCount"> & { usageCount?: number };
@@ -78,14 +123,15 @@ export function createDemoInventory(
   return source.map((item, index) => {
     const usageCount =
       item.usageCount ?? 3 + ((item.description.length * 7 + index * 11) % 48);
+    const rowVersion = item.rowVersion ?? 1;
     const assignment = DEMO_ASSIGNMENTS.get(index);
 
-    if (!assignment) return { ...item, usageCount };
+    if (!assignment) return { ...item, usageCount, rowVersion };
 
     const employee = EMPLOYEES.find(
       (candidate) => candidate.id === assignment.employeeId,
     );
-    if (!employee) return { ...item, usageCount };
+    if (!employee) return { ...item, usageCount, rowVersion };
 
     return {
       ...item,
@@ -94,6 +140,7 @@ export function createDemoInventory(
       holderId: employee.id,
       checkedOutAt: now - assignment.elapsedMs,
       usageCount,
+      rowVersion,
       lastMovementType: "checked-out",
       lastMovementBy: employee.name,
       lastMovementById: employee.id,

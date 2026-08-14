@@ -12,16 +12,20 @@ part numbers, and employees for safe demonstrations.
 - Universal check-in and direct employee-to-employee custody hand-off
 - Live 30-second overdue threshold for stakeholder demonstrations
 - Usage, custody, inventory-health, and employee assignment views
+- Shared Google Sheets storage with separate Tools and Employees tabs
+- Append-only Tool_Movements audit history for every custody change
+- Server-only Google authentication and version-checked tool updates
 - Validated Excel import and auditable Excel export
-- Versioned browser persistence for prototype sessions
+- Versioned browser persistence when Google Sheets is not configured
 - Keyboard-accessible navigation and check-out dialog
 
 ## Engineering approach
 
-The application separates presentation, domain rules, persistence, and Excel
+The application separates presentation, domain rules, persistence, and spreadsheet
 integration. Checkout and overdue rules are pure functions covered by automated
-tests. Spreadsheet parsing accepts the known register schema and rejects files
-that contain no valid inventory rows.
+tests. The Google Sheets adapter validates its three schemas before reading or
+writing and commits each tool-state update with its matching movement event in
+one atomic Sheets API batch.
 
 See [Architecture](docs/architecture.md) for boundaries and the production
 migration path.
@@ -45,14 +49,21 @@ This runs strict TypeScript, ESLint, unit tests, and the production build.
 
 ## Prototype data policy
 
-Excel is a temporary interchange and storage mechanism. Browser changes are
-saved locally for convenience and should be exported before clearing browser
-data. The repository and hosted seed must contain fictional demonstration data
-only; customer registers must not be committed or bundled into a deployment.
-Legacy browser storage is invalidated when the seed policy changes. A production
-release must use authenticated server-side persistence,
+Google Sheets is the temporary shared data store. When it is not configured,
+browser changes are saved locally for demonstration and should be exported
+before clearing browser data. The repository and hosted seed must contain
+fictional demonstration data only; customer registers must not be committed or
+bundled into a deployment. A production release must use authenticated persistence,
 role-based access, immutable custody events, backups, and an approved retention
 policy.
+
+## Google Sheets
+
+Create one blank spreadsheet, share it with a Google service account, and set
+the three server-only environment variables documented in
+[Google Sheets setup](docs/google-sheets-setup.md). MbT Stock creates and seeds
+the `Tools`, `Employees`, and `Tool_Movements` tabs automatically. Never commit
+or expose the service-account private key to browser code.
 
 ## Deployment
 

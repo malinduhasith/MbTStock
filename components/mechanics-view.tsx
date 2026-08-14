@@ -1,5 +1,5 @@
 import {
-  EMPLOYEES,
+  Employee,
   InventoryItem,
   WorkshopMode,
   formatElapsed,
@@ -8,6 +8,7 @@ import { Icon } from "./icon";
 
 export function MechanicsView({
   employeeId,
+  employees,
   mode,
   query,
   items,
@@ -21,6 +22,7 @@ export function MechanicsView({
   onHandOff,
 }: {
   employeeId: string;
+  employees: readonly Employee[];
   mode: WorkshopMode;
   query: string;
   items: readonly InventoryItem[];
@@ -33,7 +35,7 @@ export function MechanicsView({
   onReturn: (item: InventoryItem) => void;
   onHandOff: (item: InventoryItem) => void;
 }) {
-  const employee = EMPLOYEES.find((candidate) => candidate.id === employeeId);
+  const employee = employees.find((candidate) => candidate.id === employeeId);
 
   if (!employee) {
     return (
@@ -43,7 +45,7 @@ export function MechanicsView({
           <div><small>MECHANIC WORKSTATION</small><h2>Who are you?</h2><p>Select your profile to check tools out or return them.</p></div>
         </div>
         <div className="identity-grid">
-          {EMPLOYEES.map((person) => (
+          {employees.map((person) => (
             <button type="button" key={person.id} onClick={() => onEmployeeChange(person.id)}>
               <span>{person.initials}</span>
               <strong>{person.name}</strong>
