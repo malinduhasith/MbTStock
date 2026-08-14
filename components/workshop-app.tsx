@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   EMPLOYEES,
+  Employee,
   InventoryFilter,
   InventoryItem,
   Tab,
@@ -20,6 +21,7 @@ import {
   getLocations,
   getMostUsed,
   getWorkshopDeskItems,
+  handOffTool,
   isCheckedOut,
   isOverdue,
   requiresAttention,
@@ -41,6 +43,7 @@ import {
 } from "./reports-views";
 import { ToolsView } from "./tools-view";
 import { MechanicsView } from "./mechanics-view";
+import { HandoffDialog } from "./handoff-dialog";
 
 const NAVIGATION: readonly [Tab, IconName][] = [
   ["Workshop Desk", "tools"],
@@ -62,6 +65,8 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
   const [filter, setFilter] = useState<InventoryFilter>("All tools");
   const [now, setNow] = useState(0);
   const [selected, setSelected] = useState<InventoryItem | null>(null);
+  const [handoffItem, setHandoffItem] =
+    useState<InventoryItem | null>(null);
   const [employeeId, setEmployeeId] = useState(EMPLOYEES[0].id);
   const [mechanicId, setMechanicId] = useState("");
   const [mechanicMode, setMechanicMode] =
@@ -143,6 +148,7 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
   }, []);
 
   const closeDialog = useCallback(() => setSelected(null), []);
+  const closeHandoffDialog = useCallback(() => setHandoffItem(null), []);
 
   function confirmCheckOut() {
     if (!selected) return;
@@ -160,9 +166,37 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
     flash(`Checked out to ${employee.name}`);
   }
 
-  function handleReturn(item: InventoryItem) {
-    setItems((current) => returnTool(current, item.id));
-    flash("Tool returned");
+  function handleReturn(item: InventoryItem, performedById?: string) {
+    const performedBy = EMPLOYEES.find(
+      (employee) => employee.id === performedById,
+    );
+    setItems((current) =>
+      returnTool(current, item.id, performedBy, Date.now()),
+    );
+    flash(
+      performedBy
+        ? `Tool returned by ${performedBy.name}`
+        : "Tool returned",
+    );
+  }
+
+  function confirmHandOff(recipient: Employee) {
+    if (!handoffItem) return;
+    const performedBy = EMPLOYEES.find(
+      (employee) => employee.id === mechanicId,
+    );
+    if (!performedBy) return;
+    setItems((current) =>
+      handOffTool(
+        current,
+        handoffItem.id,
+        recipient,
+        performedBy,
+        Date.now(),
+      ),
+    );
+    closeHandoffDialog();
+    flash(`Handed off to ${recipient.name}`);
   }
 
   function beginMechanicCheckOut(item: InventoryItem) {
@@ -271,7 +305,8 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
               onModeChange={changeMechanicMode}
               onQueryChange={setMechanicQuery}
               onCheckOut={beginMechanicCheckOut}
-              onReturn={handleReturn}
+              onReturn={(item) => handleReturn(item, mechanicId)}
+              onHandOff={setHandoffItem}
             />
           ) : null}
           {tab === "Dashboard" ? (
@@ -289,6 +324,17 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
         </main>
         {selected ? (
           <CheckoutDialog item={selected} employeeId={employeeId} onEmployeeChange={setEmployeeId} onCancel={closeDialog} onConfirm={confirmCheckOut} />
+        ) : null}
+        {handoffItem && mechanicId ? (
+          <HandoffDialog
+            item={handoffItem}
+            performedBy={
+              EMPLOYEES.find((employee) => employee.id === mechanicId) ??
+              EMPLOYEES[0]
+            }
+            onCancel={closeHandoffDialog}
+            onConfirm={confirmHandOff}
+          />
         ) : null}
       </div>
     </div>
