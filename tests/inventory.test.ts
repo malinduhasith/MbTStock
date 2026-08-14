@@ -14,13 +14,13 @@ import {
 
 const tool: InventoryItem = {
   id: "tool-1",
-  partNumber: "123 456",
+  partNumber: "SIM-TOOL-001",
   description: "Bearing puller",
   qty: 1,
-  location: "TA1",
+  location: "Demo Bay A",
   damaged: false,
   missingParts: "",
-  source: "register.xlsx",
+  source: "Fictional demo register.xlsx",
   status: "available",
   usageCount: 2,
 };
