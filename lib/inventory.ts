@@ -2,6 +2,7 @@ export const DEMO_OVERDUE_MS = 30_000;
 export const STORAGE_VERSION = 1;
 
 export type Tab =
+  | "Workshop Desk"
   | "Dashboard"
   | "Tools"
   | "Checked Out"
@@ -15,6 +16,7 @@ export type InventoryFilter =
   | "Available"
   | "Checked out"
   | "Needs attention";
+export type WorkshopMode = "check-out" | "check-in";
 
 export interface Employee {
   id: string;
@@ -99,6 +101,10 @@ export function isCheckedOut(item: InventoryItem): boolean {
   return item.status === "checked-out";
 }
 
+export function canCheckOut(item: InventoryItem): boolean {
+  return !isCheckedOut(item) && !requiresAttention(item);
+}
+
 export function isOverdue(
   item: InventoryItem,
   now: number,
@@ -118,7 +124,7 @@ export function checkOutTool(
   checkedOutAt = Date.now(),
 ): InventoryItem[] {
   return items.map((item) =>
-    item.id === toolId
+    item.id === toolId && canCheckOut(item)
       ? {
           ...item,
           status: "checked-out",
@@ -129,6 +135,28 @@ export function checkOutTool(
         }
       : item,
   );
+}
+
+export function getWorkshopDeskItems(
+  items: readonly InventoryItem[],
+  mode: WorkshopMode,
+  employeeId: string,
+  query: string,
+): InventoryItem[] {
+  if (!employeeId) return [];
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  return items.filter((item) => {
+    const matchesQuery =
+      !normalizedQuery ||
+      [item.partNumber, item.description, item.location]
+        .join(" ")
+        .toLocaleLowerCase()
+        .includes(normalizedQuery);
+    if (!matchesQuery) return false;
+    return mode === "check-in"
+      ? isCheckedOut(item) && item.holderId === employeeId
+      : canCheckOut(item);
+  });
 }
 
 export function returnTool(
