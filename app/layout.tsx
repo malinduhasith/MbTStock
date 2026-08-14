@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MbT Stock",
-  description: "Workshop tool inventory and check-out register.",
+  title: {
+    default: "MbT Stock",
+    template: "%s | MbT Stock",
+  },
+  description: "Mercedes-Benz workshop inventory and tool-custody prototype.",
+  robots: {
+    index: false,
+    follow: false,
+  },
   other: {
     "codex-preview": "development",
-  },
-  icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
   },
 };
 
