@@ -6,6 +6,7 @@ import {
   checkOutTool,
   filterInventory,
   formatElapsed,
+  getWorkshopDeskItems,
   isOverdue,
   returnTool,
 } from "../lib/inventory";
@@ -58,5 +59,40 @@ describe("inventory workflow", () => {
     expect(formatElapsed(29_000)).toBe("29s");
     expect(formatElapsed(90_000)).toBe("1m 30s");
     expect(formatElapsed(3_660_000)).toBe("1h 1m");
+  });
+
+  it("shows only a mechanic's own tools in check-in mode", () => {
+    const [checkedOut] = checkOutTool([tool], tool.id, EMPLOYEES[0], 1_000);
+    expect(
+      getWorkshopDeskItems(
+        [checkedOut],
+        "check-in",
+        EMPLOYEES[0].id,
+        "",
+      ),
+    ).toHaveLength(1);
+    expect(
+      getWorkshopDeskItems(
+        [checkedOut],
+        "check-in",
+        EMPLOYEES[1].id,
+        "",
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("does not offer damaged tools for mechanic check-out", () => {
+    const damaged = { ...tool, id: "damaged", damaged: true };
+    expect(
+      getWorkshopDeskItems(
+        [tool, damaged],
+        "check-out",
+        EMPLOYEES[0].id,
+        "",
+      ),
+    ).toEqual([tool]);
+    expect(checkOutTool([damaged], damaged.id, EMPLOYEES[0])).toEqual([
+      damaged,
+    ]);
   });
 });
