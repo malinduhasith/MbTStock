@@ -18,6 +18,7 @@ export function MechanicsView({
   onQueryChange,
   onCheckOut,
   onReturn,
+  onHandOff,
 }: {
   employeeId: string;
   mode: WorkshopMode;
@@ -30,6 +31,7 @@ export function MechanicsView({
   onQueryChange: (query: string) => void;
   onCheckOut: (item: InventoryItem) => void;
   onReturn: (item: InventoryItem) => void;
+  onHandOff: (item: InventoryItem) => void;
 }) {
   const employee = EMPLOYEES.find((candidate) => candidate.id === employeeId);
 
@@ -76,7 +78,10 @@ export function MechanicsView({
             <Icon name="out" /><span><strong>Check out a tool</strong><small>Take a tool into the workshop</small></span>
           </button>
           <button type="button" className={mode === "check-in" ? "active" : ""} aria-pressed={mode === "check-in"} onClick={() => onModeChange("check-in")}>
-            <Icon name="down" /><span><strong>Check in a tool</strong><small>Return one of your tools</small></span>
+            <Icon name="down" /><span><strong>Check in a tool</strong><small>Return any workshop tool</small></span>
+          </button>
+          <button type="button" className={mode === "hand-off" ? "active" : ""} aria-pressed={mode === "hand-off"} onClick={() => onModeChange("hand-off")}>
+            <Icon name="users" /><span><strong>Hand off a tool</strong><small>Transfer it to another employee</small></span>
           </button>
         </div>
       </div>
@@ -85,14 +90,14 @@ export function MechanicsView({
         <div className="desk-intro compact">
           <span className="step-number">3</span>
           <div>
-            <small>{mode === "check-out" ? "SELECT A TOOL" : "YOUR ASSIGNED TOOLS"}</small>
-            <h2>{mode === "check-out" ? "Which tool do you need?" : "Which tool are you returning?"}</h2>
+            <small>{mode === "check-out" ? "SELECT A TOOL" : mode === "check-in" ? "CHECKED-OUT TOOLS" : "TRANSFER CUSTODY"}</small>
+            <h2>{mode === "check-out" ? "Which tool do you need?" : mode === "check-in" ? "Which tool are you returning?" : "Which tool are you handing off?"}</h2>
           </div>
         </div>
         <label className="mechanic-search">
           <span className="sr-only">Search tools</span>
           <Icon name="search" />
-          <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search part number, tool name or storage location…" />
+          <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search part number, tool, location or current holder…" />
           {query ? <button type="button" onClick={() => onQueryChange("")}>Clear</button> : null}
         </label>
         <div className="desk-results" aria-live="polite">
@@ -102,18 +107,18 @@ export function MechanicsView({
               <div className="desk-tool-copy">
                 <small>{item.partNumber || "UNNUMBERED TOOL"}</small>
                 <h3>{item.description}</h3>
-                <p><b>{item.location}</b> · Qty {item.qty}{mode === "check-in" && item.checkedOutAt ? ` · Out ${formatElapsed(now - item.checkedOutAt)}` : ""}</p>
+                <p><b>{item.location}</b> · Qty {item.qty}{mode !== "check-out" ? ` · Held by ${item.holder}` : ""}{mode !== "check-out" && item.checkedOutAt ? ` · Out ${formatElapsed(now - item.checkedOutAt)}` : ""}</p>
               </div>
-              <button type="button" className={mode === "check-out" ? "desk-checkout" : "desk-return"} onClick={() => mode === "check-out" ? onCheckOut(item) : onReturn(item)}>
-                {mode === "check-out" ? "Select & check out" : "Check in now"}
+              <button type="button" className={mode === "check-out" ? "desk-checkout" : mode === "check-in" ? "desk-return" : "desk-handoff"} onClick={() => mode === "check-out" ? onCheckOut(item) : mode === "check-in" ? onReturn(item) : onHandOff(item)}>
+                {mode === "check-out" ? "Select & check out" : mode === "check-in" ? "Check in now" : "Choose recipient"}
               </button>
             </article>
           ))}
           {!items.length ? (
             <div className="desk-empty">
-              <Icon name={mode === "check-out" ? "search" : "down"} />
-              <strong>{mode === "check-out" ? "No available tools found" : "You have no matching tools to return"}</strong>
-              <p>{mode === "check-out" ? "Try a part number, tool name, or storage location." : "Switch to Check out to select another tool."}</p>
+              <Icon name={mode === "check-out" ? "search" : mode === "check-in" ? "down" : "users"} />
+              <strong>{mode === "check-out" ? "No available tools found" : mode === "check-in" ? "No checked-out tools match" : "No checked-out tools available to hand off"}</strong>
+              <p>{mode === "check-out" ? "Try a part number, tool name, or storage location." : "Try another tool name, part number, or holder."}</p>
             </div>
           ) : null}
         </div>
