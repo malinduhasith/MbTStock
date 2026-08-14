@@ -154,7 +154,11 @@ export function WorkshopApp({ seed }: { seed: readonly InventoryItem[] }) {
   );
 
   useEffect(() => {
-    void refreshRepository(true);
+    const hydrationTask = window.setTimeout(
+      () => void refreshRepository(true),
+      0,
+    );
+    return () => window.clearTimeout(hydrationTask);
   }, [refreshRepository]);
 
   useEffect(() => {

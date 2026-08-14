@@ -390,7 +390,7 @@ async function readInternal(
   seed: readonly InventoryItem[],
 ): Promise<InternalDataset> {
   const ids = await sheetIds(config);
-  let ranges = await readRanges(config, [
+  const ranges = await readRanges(config, [
     `${SHEET_NAMES.employees}!A2:E`,
     `${SHEET_NAMES.tools}!A2:P`,
     `${SHEET_NAMES.movements}!A2:I`,
