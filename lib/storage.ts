@@ -5,11 +5,13 @@ import {
   isInventoryItem,
 } from "./inventory";
 
-const STORAGE_KEY = "mbt-stock:inventory:v1";
+const STORAGE_KEY = "mbt-stock:inventory:v2";
+const LEGACY_STORAGE_KEYS = ["mbt-stock:inventory:v1"] as const;
 
 export function loadInventory(): InventoryItem[] | null {
   if (typeof window === "undefined") return null;
   try {
+    LEGACY_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const snapshot = JSON.parse(raw) as Partial<InventorySnapshot>;
