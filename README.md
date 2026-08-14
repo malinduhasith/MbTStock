@@ -9,6 +9,7 @@ from the supplied TA and TB Excel registers. It contains 386 register records,
 - Search and filter by part number, description, location, condition, or holder
 - Check tools out to identified employees and return them to the workshop
 - Mechanic-facing Workshop Desk with identity selection and guided movement
+- Universal check-in and direct employee-to-employee custody hand-off
 - Live 30-second overdue threshold for stakeholder demonstrations
 - Usage, custody, inventory-health, and employee assignment views
 - Validated Excel import and auditable Excel export
